@@ -32,16 +32,22 @@ COPY . .
 
 RUN DJANGO_SETTINGS_MODULE=config.settings.production \
     SECRET_KEY=build-time-placeholder \
-    ALLOWED_HOSTS=* \
+    ALLOWED_HOSTS='*' \
+    DB_PATH=/tmp/build.sqlite3 \
+    REDIS_URL=redis://localhost:6379/1 \
     python manage.py collectstatic --noinput --clear
 
 RUN mkdir -p /app/data && chown -R appuser:appuser /app/data && \
     chown -R appuser:appuser /app/staticfiles
 
+COPY --chown=appuser:appuser scripts/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 USER appuser
 
 EXPOSE 7000
 
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["gunicorn", \
      "--bind", "0.0.0.0:7000", \
      "--workers", "2", \
