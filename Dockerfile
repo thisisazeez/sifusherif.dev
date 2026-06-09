@@ -48,6 +48,7 @@ ENTRYPOINT ["/entrypoint.sh"]
 CMD ["gunicorn", \
      "--bind", "0.0.0.0:7000", \
      "--workers", "2", \
+     "--worker-tmp-dir", "/tmp", \
      "--timeout", "60", \
      "--access-logfile", "-", \
      "--error-logfile", "-", \
