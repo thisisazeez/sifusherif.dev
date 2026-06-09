@@ -5,6 +5,9 @@
 # ─────────────────────────────────────────────────────────────
 set -e
 
+echo "[entrypoint] Collecting static files..."
+python manage.py collectstatic --noinput --clear
+
 echo "[entrypoint] Running database migrations..."
 python manage.py migrate --noinput
 

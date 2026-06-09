@@ -30,9 +30,9 @@ COPY --from=builder /install /usr/local
 
 COPY . .
 
-RUN DJANGO_SETTINGS_MODULE=config.settings.base \
-    SECRET_KEY=build-time-placeholder \
-    python manage.py collectstatic --noinput --clear
+# staticfiles dir must exist and be writable before the app starts;
+# collectstatic itself runs in entrypoint.sh at container startup.
+RUN mkdir -p /app/staticfiles
 
 RUN mkdir -p /app/data && chown -R appuser:appuser /app/data && \
     chown -R appuser:appuser /app/staticfiles
