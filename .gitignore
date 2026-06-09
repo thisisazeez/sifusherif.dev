@@ -18,7 +18,7 @@ media/
 
 # Environment — NEVER commit this
 .env
-
+.env.production
 # Virtual environments
 venv/
 .venv/
