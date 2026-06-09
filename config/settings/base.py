@@ -81,7 +81,7 @@ LOCALE_PATHS = [BASE_DIR / 'locale']
 STATIC_URL       = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT      = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 
 # ── Caching ───────────────────────────────────────────────────────────────────
 # Overridden per-environment (LocMem in local, Redis in production).
