@@ -15,7 +15,8 @@ RUN pip install --upgrade pip && \
 
 FROM python:3.12-slim AS runtime
 
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+RUN groupadd -r appuser && useradd -r -g appuser -m -d /home/appuser appuser
+ENV HOME=/home/appuser
 
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -35,7 +36,8 @@ COPY . .
 RUN mkdir -p /app/staticfiles
 
 RUN mkdir -p /app/data && chown -R appuser:appuser /app/data && \
-    chown -R appuser:appuser /app/staticfiles
+    chown -R appuser:appuser /app/staticfiles && \
+    chown -R appuser:appuser /home/appuser
 
 COPY --chown=appuser:appuser scripts/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
