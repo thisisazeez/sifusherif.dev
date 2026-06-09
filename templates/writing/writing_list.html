@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block nav_writing %}class="active"{% endblock %}
+
+{% block title %}{% trans "Writing" %} — Abdulazeez Sherif{% endblock %}
+{% block meta_description %}{% trans "Articles on Django, system design, and building fintech for African markets. Bi-weekly." %}{% endblock %}
+
+{% block content %}
+
+<div class="writing-hero">
+  <h1 class="writing-title">{% trans "Writing" %}</h1>
+  <p class="writing-desc">{% blocktrans %}Two series, published bi-weekly. <em>Django, Actually</em> translates the documentation to human. <em>System Design</em> takes real systems apart and puts them back together.{% endblocktrans %}</p>
+</div>
+
+<div class="writing-filter">
+  <button class="filter-btn active" data-series="all">{% trans "All" %}</button>
+  {% for series in series_list %}
+  <button class="filter-btn" data-series="{{ series.filter_key }}">{{ series.name }}</button>
+  {% endfor %}
+</div>
+
+<div class="writing-list" id="articles-list">
+  {% for article in articles %}
+  <a href="{{ article.get_absolute_url }}" class="writing-row" data-series="{{ article.series.filter_key|default:'all' }}">
+    <div class="writing-num">{{ forloop.counter|stringformat:"02d" }}</div>
+    <div class="writing-info">
+      <div class="writing-row-title">{{ article.title }}</div>
+      <div class="writing-row-desc">{{ article.standfirst }}</div>
+    </div>
+    <div class="writing-row-meta">
+      <span class="writing-row-series">{{ article.series.name|default:"" }}</span>
+      <span class="writing-row-date">{{ article.published_at|date:"M Y" }}</span>
+    </div>
+  </a>
+  {% empty %}
+  <p style="padding:40px 0;color:var(--ink3)">{% trans "No articles published yet." %}</p>
+  {% endfor %}
+</div>
+
+<div style="padding:20px 48px;border-top:0.5px solid var(--rule);display:flex;justify-content:space-between;align-items:center">
+  <p style="font-size:12px;color:var(--ink3)">{% trans "More coming bi-weekly." %}</p>
+  <a href="{% url 'writing:archive' %}" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3)">{% trans "Archive" %} →</a>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const btns = document.querySelectorAll('.filter-btn');
+  const rows = document.querySelectorAll('.writing-row');
+
+  btns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      btns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const series = btn.dataset.series;
+      rows.forEach(row => {
+        row.style.display =
+          (series === 'all' || row.dataset.series === series) ? 'grid' : 'none';
+      });
+    });
+  });
+</script>
+{% endblock %}

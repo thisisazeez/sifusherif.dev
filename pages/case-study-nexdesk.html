@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NexDesk — Case Study</title>
+  <meta name="description" content="Building a SaaS product for co-working spaces — bookings, invoicing, and payments — from idea to paying customers.">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+</head>
+<body>
+
+<nav>
+  <a href="../index.html" class="nav-name">Your Name</a>
+  <ul class="nav-links">
+    <li><a href="../index.html#work">Work</a></li>
+    <li><a href="writing.html">Writing</a></li>
+    <li><a href="../index.html#tools">Tools</a></li>
+    <li><a href="../index.html#about">About</a></li>
+  </ul>
+</nav>
+
+<div class="cs-hero">
+  <div class="cs-eyebrow">
+    <span>002</span>
+    <span>SaaS</span>
+    <span>Product</span>
+  </div>
+  <h1 class="cs-title">NexDesk</h1>
+  <p class="cs-subtitle">A workspace management platform for Nigerian co-working spaces. I identified the gap, built the product, and shipped it independently — bookings, invoicing, and payment collection in one system that operators can actually use.</p>
+</div>
+
+<div class="cs-meta">
+  <div class="cs-meta-item">
+    <div class="cs-meta-label">Role</div>
+    <div class="cs-meta-val">Sole Founder & Engineer</div>
+  </div>
+  <div class="cs-meta-item">
+    <div class="cs-meta-label">Stack</div>
+    <div class="cs-meta-val">Django · DRF · PostgreSQL</div>
+  </div>
+  <div class="cs-meta-item">
+    <div class="cs-meta-label">Target market</div>
+    <div class="cs-meta-val">Nigerian co-working spaces</div>
+  </div>
+  <div class="cs-meta-item">
+    <div class="cs-meta-label">Status</div>
+    <div class="cs-meta-val">Live — acquiring customers</div>
+  </div>
+</div>
+
+<div class="cs-body">
+  <aside class="cs-toc">
+    <div class="cs-toc-label">Contents</div>
+    <ul class="cs-toc-list">
+      <li><a href="#problem">The problem</a></li>
+      <li><a href="#solution">What NexDesk does</a></li>
+      <li><a href="#build">How I built it</a></li>
+      <li><a href="#stack">Technical decisions</a></li>
+      <li><a href="#booking">Booking engine</a></li>
+      <li><a href="#payments">Payments</a></li>
+      <li><a href="#lessons">Lessons</a></li>
+    </ul>
+  </aside>
+
+  <article class="cs-content">
+
+    <h2 id="problem">The problem</h2>
+    <p>Co-working spaces in Nigeria — and there are many, especially in Abuja and Lagos — are largely running their operations manually. Bookings happen over WhatsApp. Invoices are sent as PDFs over email. Payment confirmations are screenshots of bank transfers shared in group chats.</p>
+    <p>The operators are not unsophisticated. They're just running lean, and the existing tools — built for US or European markets — are either too expensive, require international payment methods they don't have, or simply don't map to how Nigerian businesses operate.</p>
+    <div class="cs-callout">
+      <p>There is no shortage of co-working management software. There is a shortage of co-working management software that understands bank transfers, Flutterwave, and the operational reality of running a workspace in Lagos.</p>
+    </div>
+
+    <h2 id="solution">What NexDesk does</h2>
+    <p>NexDesk gives co-working space operators a single dashboard to manage everything that currently happens across WhatsApp, email, and spreadsheets.</p>
+    <ul>
+      <li><strong>Booking management</strong> — desk, private office, and meeting room bookings with availability calendars</li>
+      <li><strong>Member management</strong> — member profiles, plan assignments, access history</li>
+      <li><strong>Invoicing</strong> — automatic invoice generation on booking, customisable templates, PDF export</li>
+      <li><strong>Payment collection</strong> — Flutterwave integration for card and bank transfer payments, manual payment recording for cash or direct transfers</li>
+      <li><strong>Reporting</strong> — occupancy rates, revenue by period, outstanding balances</li>
+    </ul>
+
+    <h2 id="build">How I built it</h2>
+    <p>The idea came from a conversation with someone running a small co-working space who explained their booking process: a customer sends a WhatsApp message, the operator checks a spreadsheet, replies with availability, sends a bank account number, waits for a payment screenshot, then manually updates the spreadsheet. Four steps where one should do.</p>
+    <p>I gave myself a constraint: the MVP had to be something I could get in front of a real operator within six weeks. No mobile app. No complex integrations. Just a web application that solved the core problem — replacing the WhatsApp-spreadsheet-PDF loop with something faster.</p>
+    <p>The first working version handled bookings and invoicing only. Payments came in the second iteration after the first operator asked if their customers could pay directly rather than sending bank transfer screenshots.</p>
+
+    <h2 id="stack">Technical decisions</h2>
+    <div class="cs-stack">
+      <div class="cs-stack-item">
+        <div class="cs-stack-cat">Backend</div>
+        <div class="cs-stack-items">Django 4.2<br>Django REST Framework<br>PostgreSQL<br>Celery (notifications)</div>
+      </div>
+      <div class="cs-stack-item">
+        <div class="cs-stack-cat">Frontend</div>
+        <div class="cs-stack-items">Django templates<br>HTMX<br>Alpine.js<br>Tailwind CSS</div>
+      </div>
+      <div class="cs-stack-item">
+        <div class="cs-stack-cat">Payments & infra</div>
+        <div class="cs-stack-items">Flutterwave<br>WeasyPrint (PDF)<br>Docker<br>Nginx</div>
+      </div>
+    </div>
+
+    <h3>Why HTMX instead of React</h3>
+    <p>I made the deliberate choice to use HTMX rather than building a separate frontend in React. The reasoning: NexDesk is an admin tool, not a consumer app. The interactions are CRUD-heavy — create a booking, update a member, send an invoice. HTMX handles this category of interaction very well, keeps the codebase in one language, and meant I could move faster without context-switching between a backend API and a frontend application.</p>
+    <p>This also simplified deployment significantly — one server, one process, no CORS configuration, no separate build pipeline.</p>
+
+    <h2 id="booking">The booking engine</h2>
+    <p>The booking engine is the most logic-heavy part of the system. It needs to handle availability checking, conflict prevention, and different resource types (hot desks, dedicated desks, private offices, meeting rooms) with different booking rules.</p>
+    <p>Availability checking uses a database query that looks for overlapping bookings rather than maintaining a separate availability table. For the scale NexDesk operates at, this is fast enough and avoids the complexity of keeping two data structures in sync.</p>
+
+    <pre><code># Availability check — find conflicting bookings
+def get_conflicts(resource, start_dt, end_dt, exclude_booking=None):
+    qs = Booking.objects.filter(
+        resource=resource,
+        status__in=[BookingStatus.CONFIRMED, BookingStatus.PENDING],
+        start_datetime__lt=end_dt,
+        end_datetime__gt=start_dt,
+    )
+    if exclude_booking:
+        qs = qs.exclude(pk=exclude_booking.pk)
+    return qs
+
+def is_available(resource, start_dt, end_dt):
+    return not get_conflicts(resource, start_dt, end_dt).exists()</code></pre>
+
+    <h2 id="payments">Payment collection</h2>
+    <p>Flutterwave handles card and bank transfer payments. When an invoice is generated, the operator can send the customer a payment link. The customer pays via Flutterwave's hosted page, and a webhook marks the invoice as paid and triggers a receipt email.</p>
+    <p>I also built a manual payment recording feature because many operators' long-standing clients prefer direct bank transfers and aren't going to change that behaviour. Manual recording lets the operator mark an invoice paid, add a reference, and generate a receipt — without forcing a Flutterwave transaction.</p>
+
+    <div class="cs-callout">
+      <p>One thing I learned quickly: building for the Nigerian market means accounting for partial payments. A client might pay half now and half next week. Invoices needed to support partial payments and track outstanding balances, which wasn't in the original spec.</p>
+    </div>
+
+    <h2 id="lessons">Lessons from building and shipping alone</h2>
+    <p>The most important decision I made was launching before the product felt finished. The first version had no payment integration, no reporting, and PDF invoices were basic. It was enough. The feedback from the first operator using it shaped everything that came after — the partial payments feature, the meeting room booking rules, the SMS notification option.</p>
+    <p>Building alone forces clarity. When there's no one to hand a task to, every feature has to justify its existence by the time it would take to build. Several things I thought were essential never got built because when I looked at the operator's actual workflow, they didn't need them. Operators don't need a Gantt chart of their bookings. They need to know what's booked tomorrow and whether the payment cleared.</p>
+    <p>The market insight that surprised me most: the problem isn't that operators lack tools. It's that the tools that exist weren't built with them in mind. NexDesk's biggest selling point in early conversations wasn't any specific feature — it was that it understood how Nigerian co-working spaces actually work.</p>
+
+  </article>
+</div>
+
+<div class="cs-next">
+  <div>
+    <div class="cs-next-label">Previous</div>
+    <a href="case-study-swapfada.html">
+      <div class="cs-next-title">← SwapFada</div>
+    </a>
+  </div>
+  <div style="text-align:right">
+    <div class="cs-next-label">Next case study</div>
+    <a href="case-study-ajo.html">
+      <div class="cs-next-title">Ajo — Digital ROSCA →</div>
+    </a>
+  </div>
+</div>
+
+<footer>
+  <span class="footer-name">Your Name — Abuja, Nigeria</span>
+  <div class="footer-links">
+    <a href="https://github.com/yourhandle" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://linkedin.com/in/yourhandle" target="_blank" rel="noopener">LinkedIn</a>
+    <a href="mailto:you@yourname.dev">Email</a>
+  </div>
+  <span class="footer-copy">Est. 2026</span>
+</footer>
+
+</body>
+</html>

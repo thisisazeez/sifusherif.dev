@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>I built a fintech backend alone. Here is the architecture. — Your Name</title>
+  <meta name="description" content="KYC, crypto wallets, fiat payments, 2FA — the full architecture of a Nigerian fintech app, and every decision that went into it.">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+</head>
+<body>
+
+<nav>
+  <a href="../index.html" class="nav-name">Your Name</a>
+  <ul class="nav-links">
+    <li><a href="../index.html#work">Work</a></li>
+    <li><a href="writing.html" class="active">Writing</a></li>
+    <li><a href="../index.html#tools">Tools</a></li>
+    <li><a href="../index.html#about">About</a></li>
+  </ul>
+</nav>
+
+<div class="art-hero">
+  <div class="art-eyebrow">
+    <span>Case Study</span>
+    <span>·</span>
+    <span>Jul 2026</span>
+    <span>·</span>
+    <span>14 min read</span>
+  </div>
+  <h1 class="art-title">I built a fintech backend<br>alone. Here is the architecture.</h1>
+  <p class="art-standfirst">KYC identity verification, crypto wallet custody, fiat payment rails, and two-factor authentication — all as the only backend engineer. This is what I built, why I made the decisions I made, and what I'd change.</p>
+</div>
+
+<div class="art-body">
+  <aside class="art-sidebar">
+    <div class="art-sidebar-section">
+      <div class="art-sidebar-label">Series</div>
+      <div class="art-sidebar-val">Case Study</div>
+    </div>
+    <div class="art-sidebar-section">
+      <div class="art-sidebar-label">Published</div>
+      <div class="art-sidebar-val">July 2026</div>
+    </div>
+    <div class="art-sidebar-section">
+      <div class="art-sidebar-label">Stack</div>
+      <div class="art-sidebar-val">Django · DRF · PostgreSQL · Celery · Redis</div>
+    </div>
+    <div class="art-sidebar-section">
+      <div class="art-sidebar-label">Full case study</div>
+      <div class="art-sidebar-val"><a href="case-study-swapfada.html" style="color:var(--ink2);border-bottom:0.5px solid var(--rule)">Read the detailed writeup →</a></div>
+    </div>
+  </aside>
+
+  <article class="art-content">
+
+    <h2>Background</h2>
+    <p>SwapFada is a Nigerian fintech application for crypto-fiat exchange. A project manager who was also building the frontend hired me to design and build the entire backend from scratch. There was no existing codebase. I was the only backend engineer throughout.</p>
+    <p>This article is about the architecture — the decisions, the tradeoffs, and the things I wish someone had told me before I started integrating with Nigerian fintech APIs.</p>
+
+    <blockquote>
+      <p>The hardest part of building regulated fintech is not the integrations. It's designing a system where every component has to be correct before any of it can go live. There is no "ship fast and fix later" when you're handling real money.</p>
+    </blockquote>
+
+    <h2>The overall structure</h2>
+    <p>The backend is a Django monolith with a DRF API layer. I chose this deliberately over microservices. The team was small, the timeline was fixed, and the failure modes of distributed systems would have added complexity without adding anything meaningful at our scale. A well-structured monolith is easier to reason about, easier to debug, and easier to deploy — and it can always be split later if the need genuinely arises.</p>
+    <p>The application is divided into five Django apps, each with a clear domain boundary:</p>
+    <ul>
+      <li><strong>users</strong> — the User model, registration, login, profile</li>
+      <li><strong>identity</strong> — KYC verification, verification status, Dojah integration</li>
+      <li><strong>wallets</strong> — crypto and fiat wallet models, Quidax and Flutterwave integrations</li>
+      <li><strong>transactions</strong> — the transaction ledger, swaps, deposits, withdrawals</li>
+      <li><strong>notifications</strong> — email and in-app notifications via Celery</li>
+    </ul>
+    <p>Each app has its own <code>services.py</code>. Business logic lives in services, not in views or models. This was the single best architectural decision I made — when external APIs changed their response format (and they did), I had one file to update, not a trail of logic scattered through views.</p>
+
+    <h2>KYC — verifying who your users actually are</h2>
+    <p>Any app that moves real money in Nigeria needs KYC — Know Your Customer. Users must verify their identity before transacting. I used <strong>Dojah</strong>, a Nigerian identity verification provider that offers NIN (National Identification Number) and BVN (Bank Verification Number) lookups.</p>
+    <p>The flow: user submits their NIN or BVN → we call Dojah's API → we get back identity data → we compare it against what they provided at registration → if it matches, we mark them verified and unlock transactions.</p>
+    <p>The edge case nobody mentions in the documentation: <strong>Nigerian names are inconsistently spelled across official documents</strong>. "Chukwuemeka" in one document, "Chukwu-Emeka" in another. Strict string comparison fails too often. I implemented fuzzy matching with a similarity threshold — if the names are more than 85% similar, we consider it a match. This reduced false rejections from frustrating to rare.</p>
+
+    <pre><code>from difflib import SequenceMatcher
+
+def names_match(name_a: str, name_b: str, threshold=0.85) -> bool:
+    a = name_a.lower().strip().replace('-', ' ')
+    b = name_b.lower().strip().replace('-', ' ')
+    ratio = SequenceMatcher(None, a, b).ratio()
+    return ratio >= threshold</code></pre>
+
+    <h2>Crypto wallets — custodial vs non-custodial</h2>
+    <p>For crypto wallets I integrated <strong>Quidax</strong>, a Nigerian crypto exchange. The key decision here was custodial vs non-custodial. A non-custodial wallet means users hold their own private keys — more control for the user, more complexity for the developer, and genuinely difficult to make user-friendly for a consumer app. A custodial wallet means Quidax holds the keys and we manage the abstraction layer.</p>
+    <p>Custodial is the right choice for a consumer fintech app. Users of SwapFada are not crypto-native — they're people who want to swap naira for USDT. They don't want to manage seed phrases. Custodial wallets mean we can give them a simple interface backed by real on-chain assets.</p>
+    <p>Wallet provisioning happens asynchronously after KYC verification completes. When a user passes KYC, a Celery task fires and creates wallets for each supported currency via the Quidax API. The user doesn't wait for this — they see a "setting up your wallets" state until the task completes.</p>
+
+    <h2>Fiat payments — the hardest part</h2>
+    <p>For naira deposits and withdrawals I used <strong>Flutterwave</strong>. Each user gets a virtual account number — a real Nigerian bank account number tied to their SwapFada account. When someone transfers money to that number, Flutterwave fires a webhook and we credit the user's balance.</p>
+    <p>Withdrawals are the reverse: we call Flutterwave's transfer API, which sends money to the user's bank account. The process is asynchronous — we queue the transfer, Flutterwave processes it (usually within seconds), and a webhook confirms success or failure.</p>
+    <p>The critical implementation detail with any payment webhook: <strong>idempotency</strong>. Webhooks can be delivered more than once. If you credit a user's balance on every delivery, you'll double-credit them. The fix is simple and non-negotiable: check for the transaction reference before writing anything.</p>
+
+    <pre><code>@transaction.atomic
+def process_deposit_webhook(payload: dict) -> None:
+    ref = payload['data']['tx_ref']
+
+    # If we've seen this reference, stop. Don't process twice.
+    if Transaction.objects.filter(external_ref=ref).exists():
+        return
+
+    user = resolve_user_from_account(payload['data']['account_number'])
+    amount = Decimal(str(payload['data']['amount']))
+
+    Transaction.objects.create(
+        user=user, type='deposit',
+        amount=amount, external_ref=ref,
+        status='completed'
+    )
+    # F() expression avoids race condition on the balance update
+    user.fiat_balance = F('fiat_balance') + amount
+    user.save(update_fields=['fiat_balance'])</code></pre>
+
+    <p>Note the <code>F()</code> expression on the balance update. If two webhooks for different deposits arrive simultaneously, a normal <code>user.fiat_balance += amount</code> creates a race condition — both reads happen before either write. <code>F('fiat_balance') + amount</code> pushes the arithmetic to the database, which handles concurrent updates correctly.</p>
+
+    <h2>Authentication and 2FA</h2>
+    <p>Auth uses SimpleJWT — short-lived access tokens (15 minutes) and longer-lived refresh tokens (7 days). For a financial application, short access token lifetimes matter. A leaked access token has a 15-minute window, not a week.</p>
+    <p>2FA is TOTP — the same standard as Google Authenticator and Authy. Users scan a QR code during setup. On subsequent logins, after password verification, they enter a 6-digit code. The login flow is two steps: password → pre-auth token → TOTP code → real tokens. The pre-auth token is short-lived and single-use.</p>
+
+    <h2>What I'd do differently</h2>
+    <p>Looking back with some distance, three things I'd change:</p>
+    <ul>
+      <li><strong>Start with a proper API client wrapper on day one.</strong> I built the Dojah and Quidax wrappers partway through when I got tired of writing the same request boilerplate. Should have been first.</li>
+      <li><strong>More aggressive Celery usage from the start.</strong> I moved several operations to Celery midway through when they turned out to be slow. Anything touching an external API should be in a task by default.</li>
+      <li><strong>Structured logging earlier.</strong> Debugging webhook issues in development with <code>print()</code> statements is fine. In production, you want structured JSON logs with a request ID that you can trace across the webhook → task → database chain. I added this late.</li>
+    </ul>
+    <p>The thing I'm most confident I got right: the service layer. When Quidax changed their webhook payload format midway through development, I updated one file. When Dojah added a new field to their NIN response, I updated one file. The views never knew any of this happened. That's the value of a service layer in an integration-heavy codebase.</p>
+
+  </article>
+</div>
+
+<div class="art-more">
+  <div class="section-label">Read next</div>
+  <div class="art-more-grid">
+    <a href="case-study-swapfada.html" class="art-more-item">
+      <div class="art-more-series">Case Study</div>
+      <div class="art-more-title">SwapFada — full technical case study</div>
+    </a>
+    <a href="article-twitter-architecture.html" class="art-more-item">
+      <div class="art-more-series">System Design</div>
+      <div class="art-more-title">How would you architect Twitter's timeline?</div>
+    </a>
+    <a href="article-django-tenants.html" class="art-more-item">
+      <div class="art-more-series">Django, Actually</div>
+      <div class="art-more-title">django-tenants is documented. It is not explained.</div>
+    </a>
+  </div>
+</div>
+
+<footer>
+  <span class="footer-name">Your Name — Abuja, Nigeria</span>
+  <div class="footer-links">
+    <a href="https://github.com/yourhandle" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://linkedin.com/in/yourhandle" target="_blank" rel="noopener">LinkedIn</a>
+    <a href="mailto:you@yourname.dev">Email</a>
+  </div>
+  <span class="footer-copy">Est. 2026</span>
+</footer>
+
+</body>
+</html>

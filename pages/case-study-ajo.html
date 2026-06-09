@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ajo — Case Study</title>
+  <meta name="description" content="Digitising the traditional rotating savings group (ROSCA) for African communities. Simple enough for people who found WhatsApp hard to set up.">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+</head>
+<body>
+
+<nav>
+  <a href="../index.html" class="nav-name">Your Name</a>
+  <ul class="nav-links">
+    <li><a href="../index.html#work">Work</a></li>
+    <li><a href="writing.html">Writing</a></li>
+    <li><a href="../index.html#tools">Tools</a></li>
+    <li><a href="../index.html#about">About</a></li>
+  </ul>
+</nav>
+
+<div class="cs-hero">
+  <div class="cs-eyebrow">
+    <span>003</span>
+    <span>Consumer Fintech</span>
+    <span>Cultural Infrastructure</span>
+  </div>
+  <h1 class="cs-title">Ajo</h1>
+  <p class="cs-subtitle">Digitising the Ajo/Esusu — the rotating savings group that has existed in West Africa for centuries. Not as a fintech product optimised for growth metrics, but as a tool simple enough for people who found WhatsApp hard to set up.</p>
+</div>
+
+<div class="cs-meta">
+  <div class="cs-meta-item">
+    <div class="cs-meta-label">Role</div>
+    <div class="cs-meta-val">Sole Engineer & Designer</div>
+  </div>
+  <div class="cs-meta-item">
+    <div class="cs-meta-label">Stack</div>
+    <div class="cs-meta-val">Django · DRF · PostgreSQL</div>
+  </div>
+  <div class="cs-meta-item">
+    <div class="cs-meta-label">Target users</div>
+    <div class="cs-meta-val">Community savings groups</div>
+  </div>
+  <div class="cs-meta-item">
+    <div class="cs-meta-label">Status</div>
+    <div class="cs-meta-val">In development</div>
+  </div>
+</div>
+
+<div class="cs-body">
+  <aside class="cs-toc">
+    <div class="cs-toc-label">Contents</div>
+    <ul class="cs-toc-list">
+      <li><a href="#what">What is an Ajo?</a></li>
+      <li><a href="#why">Why build this</a></li>
+      <li><a href="#insight">The design insight</a></li>
+      <li><a href="#features">Core features</a></li>
+      <li><a href="#build">How it's built</a></li>
+      <li><a href="#complexity">The hard parts</a></li>
+      <li><a href="#market">The market</a></li>
+    </ul>
+  </aside>
+
+  <article class="cs-content">
+
+    <h2 id="what">What is an Ajo?</h2>
+    <p>An Ajo (also called Esusu, Asusu, or Susu depending on where you are in West Africa) is a rotating savings group. A fixed group of people — usually friends, family, or colleagues — each contribute a fixed amount of money at regular intervals. Each cycle, the entire pot goes to one member. The order rotates until everyone has received once.</p>
+    <p>If ten people each contribute ₦20,000 monthly, each person receives ₦200,000 on their turn. It's an interest-free, trust-based savings mechanism that predates formal banking in Africa — and it still works, because it solves a real problem: how do you save a lump sum when you live on a monthly salary?</p>
+    <div class="cs-callout">
+      <p>The Ajo is not a workaround for people without bank accounts. It's a deliberate savings strategy used by people at every income level. The woman saving for her child's school fees and the entrepreneur saving for equipment both use it, because it enforces commitment in a way that a personal savings account simply doesn't.</p>
+    </div>
+    <p>Today, most Ajo groups are coordinated over WhatsApp. The group admin — usually the most trusted person in the group — manually tracks contributions, confirms payments, and coordinates payouts. It works, but it's fragile: one admin going offline can delay a payout, disputes about whether someone paid are common, and there's no audit trail.</p>
+
+    <h2 id="why">Why build this</h2>
+    <p>I overheard my mother on the phone, coordinating an empowerment group with her friends. They contribute money each month and take turns collecting. She was manually tracking who had paid, who was next to receive, and following up with members who were late.</p>
+    <p>I knew this problem had been approached before — I had worked on a previous platform built for exactly this use case, which went under for unrelated reasons. But what I had observed in both the previous platform and in watching my mother's group was the same failure mode: the tools built for this problem were built by people who understood fintech, but not by people who understood Ajo groups.</p>
+    <p>The previous platforms I encountered were feature-heavy. They had notifications, dashboards, analytics, social features. The people who actually run Ajo groups — like my mother — found WhatsApp hard to set up. A dashboard with eight navigation items was never going to work for her.</p>
+
+    <h2 id="insight">The design insight</h2>
+    <p>The core insight behind Ajo (the app) is that the tool needs to be simpler than the WhatsApp group it's replacing — not just comparable to it.</p>
+    <p>This is a stricter constraint than it sounds. WhatsApp is extremely simple. Any tool that adds friction compared to sending a message in a group chat will lose. The only way to win is to be meaningfully simpler for the specific job being done, which is: track who paid, know who's next, confirm when a payout happened.</p>
+
+    <h3>What I cut</h3>
+    <p>The temptation in building any financial product is to add features. I deliberately removed everything that wasn't the core loop:</p>
+    <ul>
+      <li>No social features — no group chat, no reactions, no profiles</li>
+      <li>No analytics dashboards — operators don't need charts, they need answers</li>
+      <li>No investment features — just savings rotation, nothing more</li>
+      <li>No marketplace — scope creep that killed previous platforms</li>
+      <li>No complex admin roles — one admin per group, full stop</li>
+    </ul>
+
+    <h2 id="features">Core features only</h2>
+    <p>The application does five things:</p>
+    <ul>
+      <li><strong>Group creation</strong> — admin sets contribution amount, frequency, and member order</li>
+      <li><strong>Contribution tracking</strong> — members confirm payment, admin confirms receipt; both sides have a record</li>
+      <li><strong>Turn management</strong> — the system knows whose turn it is to receive, and when</li>
+      <li><strong>Payout confirmation</strong> — admin records that a payout was made; member confirms receipt</li>
+      <li><strong>History</strong> — a simple, readable log of every contribution and payout for the group</li>
+    </ul>
+    <p>That's the entire product. Anything else is a future problem.</p>
+
+    <h2 id="build">How it's built</h2>
+    <div class="cs-stack">
+      <div class="cs-stack-item">
+        <div class="cs-stack-cat">Backend</div>
+        <div class="cs-stack-items">Django<br>Django REST Framework<br>PostgreSQL<br>Celery (reminders)</div>
+      </div>
+      <div class="cs-stack-item">
+        <div class="cs-stack-cat">Frontend</div>
+        <div class="cs-stack-items">Mobile-first web<br>Progressive Web App<br>Minimal JS<br>Works on 2G</div>
+      </div>
+      <div class="cs-stack-item">
+        <div class="cs-stack-cat">Notifications</div>
+        <div class="cs-stack-items">SMS (primary)<br>WhatsApp API<br>Email (secondary)</div>
+      </div>
+    </div>
+
+    <p>One architectural decision that shaped everything: the primary notification channel is <strong>SMS, not push notifications</strong>. Many members of the target demographic don't have smartphones — or have smartphones but don't reliably have internet. SMS reaches everyone. A push notification does not.</p>
+    <p>The frontend is a Progressive Web App — it can be added to the home screen and works offline for read operations. This matters because a member in an area with poor connectivity should still be able to see the group status and their contribution history.</p>
+
+    <h2 id="complexity">The hard parts</h2>
+    <p>The data model looks simple from the outside — groups, members, contributions, payouts — but the edge cases compound quickly.</p>
+
+    <h3>Late contributions</h3>
+    <p>What happens when a member doesn't contribute in time? The current design records the contribution as late with a timestamp but doesn't automatically change the payout order — the group admin handles disputes socially, as they always have. The app provides the record; the community provides the judgment. This was a deliberate choice not to automate something that requires social context.</p>
+
+    <h3>Early exits and replacements</h3>
+    <p>Members sometimes need to leave a group mid-cycle. The system supports transferring a position to a replacement member, but this requires admin confirmation and creates an audit entry. No position can be transferred without a trace.</p>
+
+    <pre><code># Simplified contribution model
+class Contribution(models.Model):
+    group = models.ForeignKey(Group, on_delete=models.PROTECT)
+    member = models.ForeignKey(Member, on_delete=models.PROTECT)
+    cycle = models.PositiveIntegerField()
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    due_date = models.DateField()
+    paid_at = models.DateTimeField(null=True, blank=True)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=ContributionStatus.choices,
+        default=ContributionStatus.PENDING
+    )
+
+    class Meta:
+        unique_together = ('group', 'member', 'cycle')
+        indexes = [
+            models.Index(fields=['group', 'cycle']),
+            models.Index(fields=['member', 'status']),
+        ]</code></pre>
+
+    <h2 id="market">The market, honestly</h2>
+    <p>Platforms built for this market have failed before, including one I worked on. The cause in that case was external — the founder spent money on physical infrastructure before the software was ready and ran out of runway. The idea was valid; the execution timing wasn't.</p>
+    <p>I'm building Ajo smaller and more focused than any previous attempt I've seen. No ambitions to become a neobank. No plans to introduce lending or investment products. Just the Ajo, done well, for the people who actually run them.</p>
+    <p>My mother's group is the first test. If it works for her — if she can use it without me explaining it — it works for the market.</p>
+
+  </article>
+</div>
+
+<div class="cs-next">
+  <div>
+    <div class="cs-next-label">Previous</div>
+    <a href="case-study-nexdesk.html">
+      <div class="cs-next-title">← NexDesk</div>
+    </a>
+  </div>
+  <div style="text-align:right">
+    <div class="cs-next-label">Read the article</div>
+    <a href="writing.html">
+      <div class="cs-next-title">Building fintech for African markets →</div>
+    </a>
+  </div>
+</div>
+
+<footer>
+  <span class="footer-name">Your Name — Abuja, Nigeria</span>
+  <div class="footer-links">
+    <a href="https://github.com/yourhandle" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://linkedin.com/in/yourhandle" target="_blank" rel="noopener">LinkedIn</a>
+    <a href="mailto:you@yourname.dev">Email</a>
+  </div>
+  <span class="footer-copy">Est. 2026</span>
+</footer>
+
+</body>
+</html>

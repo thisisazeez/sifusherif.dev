@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{{ cs.title }} — {% trans "Case Study" %} — Abdulazeez Sherif{% endblock %}
+{% block meta_description %}{{ cs.subtitle }}{% endblock %}
+
+{% block content %}
+
+<div class="cs-hero">
+  <div class="cs-eyebrow">
+    <span>{{ cs.number_display }}</span>
+    <span>{{ cs.category }}</span>
+    {% if cs.subcategory %}<span>{{ cs.subcategory }}</span>{% endif %}
+  </div>
+  <h1 class="cs-title">{{ cs.title }}</h1>
+  <p class="cs-subtitle">{{ cs.subtitle }}</p>
+</div>
+
+<div class="cs-meta">
+  <div class="cs-meta-item">
+    <div class="cs-meta-label">{% trans "Role" %}</div>
+    <div class="cs-meta-val">{{ cs.role }}</div>
+  </div>
+  <div class="cs-meta-item">
+    <div class="cs-meta-label">{% trans "Stack" %}</div>
+    <div class="cs-meta-val">{{ cs.stack }}</div>
+  </div>
+  {% if cs.integrations %}
+  <div class="cs-meta-item">
+    <div class="cs-meta-label">{% trans "Integrations" %}</div>
+    <div class="cs-meta-val">{{ cs.integrations }}</div>
+  </div>
+  {% endif %}
+  <div class="cs-meta-item">
+    <div class="cs-meta-label">{% trans "Status" %}</div>
+    <div class="cs-meta-val">{{ cs.status }}</div>
+  </div>
+</div>
+
+<div class="cs-body">
+  <aside class="cs-toc">
+    <div class="cs-toc-label">{% trans "Contents" %}</div>
+    {# TOC is auto-generated from h2 headings in the body via JS #}
+    <ul class="cs-toc-list" id="toc-list"></ul>
+  </aside>
+
+  <article class="cs-content" id="cs-body">
+    {{ cs.body_html|safe }}
+  </article>
+</div>
+
+<div class="cs-next">
+  {% if cs.next_case_study %}
+  <div>
+    <div class="cs-next-label">{% trans "Next case study" %}</div>
+    <a href="{{ cs.next_case_study.get_absolute_url }}">
+      <div class="cs-next-title">{{ cs.next_case_study.title }} →</div>
+    </a>
+  </div>
+  {% endif %}
+  {% if cs.related_article %}
+  <div style="text-align:right">
+    <div class="cs-next-label">{% trans "Read the article" %}</div>
+    <a href="{{ cs.related_article.get_absolute_url }}" style="text-align:right">
+      <div class="cs-next-title">{{ cs.related_article.title }} →</div>
+    </a>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Auto-build the TOC from h2 elements inside .cs-content
+  const headings = document.querySelectorAll('#cs-body h2');
+  const toc = document.getElementById('toc-list');
+  headings.forEach((h, i) => {
+    if (!h.id) h.id = 'section-' + i;
+    const li = document.createElement('li');
+    const a  = document.createElement('a');
+    a.href = '#' + h.id;
+    a.textContent = h.textContent;
+    li.appendChild(a);
+    toc.appendChild(li);
+  });
+</script>
+{% endblock %}

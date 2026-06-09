@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How would you architect Twitter's timeline? — Your Name</title>
+  <meta name="description" content="Fan-out on write vs fan-out on read, Redis sorted sets, and why Twitter's timeline is one of the most interesting data problems in software.">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+</head>
+<body>
+
+<nav>
+  <a href="../index.html" class="nav-name">Your Name</a>
+  <ul class="nav-links">
+    <li><a href="../index.html#work">Work</a></li>
+    <li><a href="writing.html" class="active">Writing</a></li>
+    <li><a href="../index.html#tools">Tools</a></li>
+    <li><a href="../index.html#about">About</a></li>
+  </ul>
+</nav>
+
+<div class="art-hero">
+  <div class="art-eyebrow">
+    <span>System Design</span>
+    <span>·</span>
+    <span>Aug 2026</span>
+    <span>·</span>
+    <span>16 min read</span>
+  </div>
+  <h1 class="art-title">How would you architect<br>Twitter's timeline?</h1>
+  <p class="art-standfirst">Fan-out on write vs fan-out on read, Redis sorted sets, and the reason celebrities broke Twitter's original design. We're going to actually design this — not just name-drop technologies.</p>
+</div>
+
+<div class="art-body">
+  <aside class="art-sidebar">
+    <div class="art-sidebar-section">
+      <div class="art-sidebar-label">Series</div>
+      <div class="art-sidebar-val">System Design</div>
+    </div>
+    <div class="art-sidebar-section">
+      <div class="art-sidebar-label">Published</div>
+      <div class="art-sidebar-val">August 2026</div>
+    </div>
+    <div class="art-sidebar-section">
+      <div class="art-sidebar-label">Assumes</div>
+      <div class="art-sidebar-val">Comfort with databases, basic caching concepts</div>
+    </div>
+    <div class="art-sidebar-section">
+      <div class="art-sidebar-label">Next in series</div>
+      <div class="art-sidebar-val"><a href="writing.html" style="color:var(--ink2);border-bottom:0.5px solid var(--rule)">GitHub's notification system →</a></div>
+    </div>
+  </aside>
+
+  <article class="art-content">
+
+    <h2>Start with the problem, not the solution</h2>
+    <p>Every system design exercise goes wrong the same way: someone names a technology before they've understood the problem. "We'll use Kafka." "We'll shard the database." These might be right answers — but to questions that haven't been asked yet.</p>
+    <p>So let's start with what Twitter's timeline actually needs to do. When you open Twitter and see your feed, the system has to answer one question: <strong>what are the most recent tweets from the people I follow, in reverse chronological order?</strong></p>
+    <p>That sounds simple. The problem is the scale at which it has to be answered — hundreds of millions of users, each following a different set of people, each expecting their feed to load in under 100ms, while roughly 6,000 new tweets are posted every second.</p>
+
+    <h2>The naive approach — and why it doesn't work</h2>
+    <p>Before reaching for a sophisticated solution, consider the obvious one. When a user loads their timeline, query the database:</p>
+
+    <pre><code>-- The query that would work at small scale
+SELECT tweets.*
+FROM tweets
+JOIN follows ON tweets.user_id = follows.followed_id
+WHERE follows.follower_id = :current_user_id
+ORDER BY tweets.created_at DESC
+LIMIT 20;</code></pre>
+
+    <p>This works. If you're building a side project with 500 users, do this. It's simple, correct, and maintainable.</p>
+    <p>At Twitter's scale, it doesn't work for two reasons. First, the <code>follows</code> table has billions of rows. The join is expensive. Second, and more fundamentally, this query runs <em>at read time</em> — every time someone opens their feed. If a million users open Twitter simultaneously, a million of these expensive joins run at the same moment.</p>
+
+    <h2>Fan-out on write</h2>
+    <p>Twitter's original solution — and still the core approach — is called <strong>fan-out on write</strong>. The idea: instead of computing each user's timeline at read time, compute it at write time. When a tweet is posted, immediately push it into the timeline cache of every follower.</p>
+    <p>Each user has a timeline stored in Redis — a sorted set, where the score is the tweet's timestamp and the member is the tweet ID. When you post a tweet:</p>
+
+    <pre><code># Pseudocode — what happens when @someone posts a tweet
+def on_tweet_posted(tweet):
+    followers = get_followers(tweet.author_id)  # could be millions
+
+    for follower_id in followers:
+        redis.zadd(
+            f"timeline:{follower_id}",
+            {tweet.id: tweet.created_at.timestamp()}
+        )
+        # Trim to last 800 tweets to cap memory
+        redis.zremrangebyrank(f"timeline:{follower_id}", 0, -801)</code></pre>
+
+    <p>Then reading the timeline is trivially fast — just read the sorted set:</p>
+
+    <pre><code># Reading a user's timeline — fast, no joins
+def get_timeline(user_id, page=0, per_page=20):
+    tweet_ids = redis.zrevrange(
+        f"timeline:{user_id}",
+        page * per_page,
+        (page + 1) * per_page - 1
+    )
+    return fetch_tweets_by_ids(tweet_ids)  # cache hit, not DB</code></pre>
+
+    <p>Reads become O(1) — just a Redis lookup. The cost moves entirely to writes. This is the fundamental tradeoff of fan-out on write: <strong>optimise for reads at the cost of writes</strong>.</p>
+
+    <h2>The celebrity problem</h2>
+    <p>Fan-out on write works beautifully until someone has 50 million followers. When Cristiano Ronaldo (hypothetically, on Twitter) posts a tweet, fan-out on write means writing to 50 million Redis sorted sets. That takes minutes — which means his followers don't see the tweet immediately, and the system is under massive write pressure for those minutes.</p>
+    <p>Twitter solved this with a hybrid approach. Users below a follower threshold (say, 1 million) use fan-out on write. Users above that threshold — celebrities, major accounts — use <strong>fan-out on read</strong> instead.</p>
+
+    <div class="art-note">
+      <p>Fan-out on read for celebrities means: their tweets are not pushed to anyone's timeline cache. Instead, when you load your timeline, the system checks: do I follow any high-follower accounts? If yes, fetch their recent tweets and merge them into the pre-computed timeline from Redis. This merge happens at read time, but it's bounded — you might follow 5 celebrities, so it's 5 small fetches, not one giant fan-out.</p>
+    </div>
+
+    <h2>The full read path</h2>
+    <p>Putting it together, reading a timeline looks like this:</p>
+
+    <pre><code>def get_timeline(user_id):
+    # 1. Get pre-computed timeline from Redis (fan-out on write accounts)
+    cached_tweet_ids = redis.zrevrange(f"timeline:{user_id}", 0, 19)
+
+    # 2. Get celebrities this user follows (fan-out on read accounts)
+    celebrity_follows = get_celebrity_follows(user_id)
+
+    # 3. Fetch recent tweets from celebrities
+    celebrity_tweets = []
+    for celeb_id in celebrity_follows:
+        tweets = get_recent_tweets(celeb_id, limit=20)
+        celebrity_tweets.extend(tweets)
+
+    # 4. Fetch full tweet objects for cached IDs
+    cached_tweets = fetch_tweets_by_ids(cached_tweet_ids)
+
+    # 5. Merge, sort by time, return top 20
+    all_tweets = cached_tweets + celebrity_tweets
+    return sorted(all_tweets, key=lambda t: t.created_at, reverse=True)[:20]</code></pre>
+
+    <h2>Storage and data flow</h2>
+    <p>The write path for a normal (non-celebrity) tweet flows like this:</p>
+    <ul>
+      <li>Tweet is written to the primary database (Postgres or similar) — this is the source of truth</li>
+      <li>A background job fans out to all followers' Redis sorted sets asynchronously</li>
+      <li>Tweet metadata is cached in a separate Redis hash for fast retrieval by ID</li>
+      <li>Media (images, video) goes to a CDN, referenced by URL in the tweet record</li>
+    </ul>
+
+    <p>The fan-out job doesn't run inline with the tweet POST request — it's queued. The tweet appears in the author's own profile immediately (read from DB), and propagates to followers' timelines within seconds as the queue drains.</p>
+
+    <h2>What about new followers?</h2>
+    <p>When you follow someone, you don't immediately see their last 200 tweets in your feed — that would require backfilling your Redis sorted set with their history. Twitter's approach: after a follow, backfill the last N tweets from the new followed account into the follower's timeline cache. This is a bounded operation regardless of how prolific the account is.</p>
+
+    <h2>The pieces you'd actually need to build this</h2>
+    <p>A real implementation at scale needs:</p>
+    <ul>
+      <li><strong>A database</strong> — tweets table, follows table, users table. The source of truth. MySQL at Twitter historically; Postgres is equally valid.</li>
+      <li><strong>Redis</strong> — one sorted set per user for their timeline. At 800 tweet IDs per user, this is roughly 6.4KB per user. 300 million users × 6.4KB ≈ 2TB of Redis — expensive but manageable with a Redis cluster.</li>
+      <li><strong>A fan-out service</strong> — reads from a queue (Kafka, SQS, whatever), pulls follower lists, writes to Redis. This is where horizontal scaling happens — add more fan-out workers to handle write spikes.</li>
+      <li><strong>A celebrity detection mechanism</strong> — a simple count on the follows table, refreshed periodically. Accounts above the threshold get a flag; fan-out workers skip them.</li>
+      <li><strong>A CDN</strong> — media doesn't come from your servers. Every image and video is behind a CDN.</li>
+    </ul>
+
+    <h2>What this teaches you</h2>
+    <p>The Twitter timeline problem is worth studying not because you're going to build Twitter, but because it's a clean example of a tradeoff that appears in almost every high-scale system: <strong>compute now or compute later</strong>. Pre-compute and cache (fan-out on write) gives you fast reads and expensive writes. Compute on demand (fan-out on read) gives you cheap writes and more work at read time.</p>
+    <p>The hybrid approach — fan-out on write for most, fan-out on read for celebrities — shows that the answer to most "which approach" questions in system design is "both, with a clear rule for which to apply when."</p>
+    <p>Next in this series: GitHub's notification system — a different set of constraints, a different set of tradeoffs.</p>
+
+  </article>
+</div>
+
+<div class="art-more">
+  <div class="section-label">More in System Design</div>
+  <div class="art-more-grid">
+    <a href="writing.html" class="art-more-item">
+      <div class="art-more-series">System Design</div>
+      <div class="art-more-title">How would you architect GitHub's notification system?</div>
+    </a>
+    <a href="article-django-tenants.html" class="art-more-item">
+      <div class="art-more-series">Django, Actually</div>
+      <div class="art-more-title">django-tenants is documented. It is not explained.</div>
+    </a>
+    <a href="article-swapfada-architecture.html" class="art-more-item">
+      <div class="art-more-series">Case Study</div>
+      <div class="art-more-title">I built a fintech backend alone. Here is the architecture.</div>
+    </a>
+  </div>
+</div>
+
+<footer>
+  <span class="footer-name">Your Name — Abuja, Nigeria</span>
+  <div class="footer-links">
+    <a href="https://github.com/yourhandle" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://linkedin.com/in/yourhandle" target="_blank" rel="noopener">LinkedIn</a>
+    <a href="mailto:you@yourname.dev">Email</a>
+  </div>
+  <span class="footer-copy">Est. 2026</span>
+</footer>
+
+</body>
+</html>

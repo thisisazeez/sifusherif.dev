@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block nav_writing %}class="active"{% endblock %}
+
+{% block title %}{% trans "Archive" %} — Abdulazeez Sherif{% endblock %}
+{% block meta_description %}{% trans "Complete archive of all articles, organised by year." %}{% endblock %}
+
+{% block content %}
+
+<div class="writing-hero">
+  <h1 class="writing-title">{% trans "Archive" %}</h1>
+  <p class="writing-desc">{% blocktrans with total=total %}{{ total }} articles. Every piece, from the beginning.{% endblocktrans %}</p>
+</div>
+
+<div class="writing-list" style="padding-top:8px">
+  {% for year_group in years %}
+  <div style="padding:32px 0 0">
+    <div class="section-label" style="padding:0 48px;margin-bottom:0">{{ year_group.year }}</div>
+
+    {% for month_group in year_group.months %}
+    <div style="padding:16px 48px 0">
+      <div style="font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);margin-bottom:8px">
+        {% with month_group.articles.0.published_at as d %}{{ d|date:"F" }}{% endwith %}
+      </div>
+      {% for article in month_group.articles %}
+      <a href="{{ article.get_absolute_url }}" class="writing-row"
+         style="grid-template-columns:32px 1fr 160px">
+        <div class="writing-num" style="font-size:12px">{{ article.published_at|date:"d" }}</div>
+        <div class="writing-info">
+          <div class="writing-row-title">{{ article.title }}</div>
+        </div>
+        <div class="writing-row-meta">
+          <span class="writing-row-series">{{ article.series.name|default:"" }}</span>
+          <span class="writing-row-date">{{ article.read_time }}m</span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+  {% empty %}
+  <p style="padding:48px;color:var(--ink3)">{% trans "No articles yet." %}</p>
+  {% endfor %}
+</div>
+
+<div style="padding:28px 48px;border-top:0.5px solid var(--rule)">
+  <a href="{% url 'writing:writing_list' %}"
+     style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3)">
+    ← {% trans "Back to Writing" %}
+  </a>
+</div>
+
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block nav_writing %}class="active"{% endblock %}
+
+{% block title %}{{ article.title }} — Abdulazeez Sherif{% endblock %}
+{% block meta_description %}{{ article.standfirst }}{% endblock %}
+
+{% block content %}
+
+<div class="art-hero">
+  <div class="art-eyebrow">
+    <span>{{ article.series.name|default:"" }}</span>
+    <span>·</span>
+    <span>{{ article.published_at|date:"M Y" }}</span>
+    <span>·</span>
+    <span>{{ article.read_time }} {% trans "min read" %}</span>
+  </div>
+  <h1 class="art-title">{{ article.title }}</h1>
+  <p class="art-standfirst">{{ article.standfirst }}</p>
+</div>
+
+<div class="art-body">
+  <aside class="art-sidebar">
+    <div class="art-sidebar-section">
+      <div class="art-sidebar-label">{% trans "Series" %}</div>
+      <div class="art-sidebar-val">{{ article.series.name|default:"—" }}</div>
+    </div>
+    <div class="art-sidebar-section">
+      <div class="art-sidebar-label">{% trans "Published" %}</div>
+      <div class="art-sidebar-val">{{ article.published_at|date:"F Y" }}</div>
+    </div>
+    {% if article.assumes %}
+    <div class="art-sidebar-section">
+      <div class="art-sidebar-label">{% trans "Assumes" %}</div>
+      <div class="art-sidebar-val">{{ article.assumes }}</div>
+    </div>
+    {% endif %}
+    {% if article.also_read %}
+    <div class="art-sidebar-section">
+      <div class="art-sidebar-label">{% trans "Also read" %}</div>
+      <div class="art-sidebar-val">
+        <a href="{{ article.also_read.get_absolute_url }}"
+           style="color:var(--ink2);border-bottom:0.5px solid var(--rule)">
+          {{ article.also_read.title }} →
+        </a>
+      </div>
+    </div>
+    {% endif %}
+    {% if article.source_url %}
+    <div class="art-sidebar-section">
+      <div class="art-sidebar-label">{% trans "Originally on" %}</div>
+      <div class="art-sidebar-val">
+        <a href="{{ article.source_url }}" target="_blank" rel="noopener"
+           style="color:var(--ink2);border-bottom:0.5px solid var(--rule)">
+          {{ article.imported_from|capfirst }} →
+        </a>
+      </div>
+    </div>
+    {% endif %}
+  </aside>
+
+  {# body_html is rendered Markdown — safe because WE wrote the renderer #}
+  <article class="art-content">
+    {{ article.body_html|safe }}
+  </article>
+</div>
+
+{% if more_articles %}
+<div class="art-more">
+  <div class="section-label">
+    {% if article.series %}
+      {% blocktrans with series=article.series.name %}More in {{ series }}{% endblocktrans %}
+    {% else %}
+      {% trans "More articles" %}
+    {% endif %}
+  </div>
+  <div class="art-more-grid">
+    {% for a in more_articles %}
+    <a href="{{ a.get_absolute_url }}" class="art-more-item">
+      <div class="art-more-series">{{ a.series.name|default:"" }}</div>
+      <div class="art-more-title">{{ a.title }}</div>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

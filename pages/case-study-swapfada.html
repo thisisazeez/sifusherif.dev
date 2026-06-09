@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SwapFada — Case Study</title>
+  <meta name="description" content="How I architected a regulated fintech platform — KYC, crypto wallets, fiat payments, and 2FA — alone, from scratch.">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+</head>
+<body>
+
+<nav>
+  <a href="../index.html" class="nav-name">Your Name</a>
+  <ul class="nav-links">
+    <li><a href="../index.html#work">Work</a></li>
+    <li><a href="writing.html">Writing</a></li>
+    <li><a href="../index.html#tools">Tools</a></li>
+    <li><a href="../index.html#about">About</a></li>
+  </ul>
+</nav>
+
+<div class="cs-hero">
+  <div class="cs-eyebrow">
+    <span>001</span>
+    <span>Fintech</span>
+    <span>Backend Architecture</span>
+  </div>
+  <h1 class="cs-title">SwapFada</h1>
+  <p class="cs-subtitle">How I led the technical architecture of a regulated Nigerian fintech platform — handling KYC identity verification, crypto custody, fiat payments, and two-factor authentication — as the sole backend engineer.</p>
+</div>
+
+<div class="cs-meta">
+  <div class="cs-meta-item">
+    <div class="cs-meta-label">Role</div>
+    <div class="cs-meta-val">Sole Backend Engineer</div>
+  </div>
+  <div class="cs-meta-item">
+    <div class="cs-meta-label">Stack</div>
+    <div class="cs-meta-val">Django · DRF · PostgreSQL</div>
+  </div>
+  <div class="cs-meta-item">
+    <div class="cs-meta-label">Integrations</div>
+    <div class="cs-meta-val">Dojah · Quidax · Flutterwave</div>
+  </div>
+  <div class="cs-meta-item">
+    <div class="cs-meta-label">Status</div>
+    <div class="cs-meta-val">70% complete, funding paused</div>
+  </div>
+</div>
+
+<div class="cs-body">
+  <aside class="cs-toc">
+    <div class="cs-toc-label">Contents</div>
+    <ul class="cs-toc-list">
+      <li><a href="#context">Context</a></li>
+      <li><a href="#architecture">Architecture</a></li>
+      <li><a href="#kyc">KYC with Dojah</a></li>
+      <li><a href="#crypto">Crypto wallets</a></li>
+      <li><a href="#fiat">Fiat payments</a></li>
+      <li><a href="#auth">Auth & 2FA</a></li>
+      <li><a href="#decisions">Key decisions</a></li>
+      <li><a href="#learned">What I learned</a></li>
+    </ul>
+  </aside>
+
+  <article class="cs-content">
+
+    <h2 id="context">Context</h2>
+    <p>SwapFada (originally called EasySwap during early development) is a Nigerian fintech application that lets users swap currencies, hold crypto and fiat wallets, and move money across the boundary between traditional and digital finance. I was brought in by the project manager — who was also building the frontend — to design and build the entire backend from scratch.</p>
+    <p>There was no existing codebase. No prior architecture. The brief was: build a production-ready backend that can handle real money, real identity verification, and real regulatory requirements in Nigeria. I was the only backend engineer on the project throughout.</p>
+    <div class="cs-callout">
+      <p>The hardest part of this project wasn't any single integration. It was designing a system where every component — auth, identity, wallets, payments — had to be correct before any of it could go live. There is no "ship fast and fix later" in regulated fintech.</p>
+    </div>
+
+    <h2 id="architecture">Architecture overview</h2>
+    <p>The backend is a Django monolith with a Django REST Framework API layer. I chose this deliberately over microservices — the team was small, the timeline was tight, and the failure modes of distributed systems at this scale would have added complexity without meaningful benefit.</p>
+
+    <div class="cs-stack">
+      <div class="cs-stack-item">
+        <div class="cs-stack-cat">Core</div>
+        <div class="cs-stack-items">Django 4.2<br>Django REST Framework<br>PostgreSQL<br>Celery + Redis</div>
+      </div>
+      <div class="cs-stack-item">
+        <div class="cs-stack-cat">External APIs</div>
+        <div class="cs-stack-items">Dojah (KYC)<br>Quidax (crypto)<br>Flutterwave (fiat)<br>SMTP (notifications)</div>
+      </div>
+      <div class="cs-stack-item">
+        <div class="cs-stack-cat">Security</div>
+        <div class="cs-stack-items">JWT (SimpleJWT)<br>TOTP-based 2FA<br>Webhook signature verification<br>Rate limiting</div>
+      </div>
+    </div>
+
+    <p>The application is structured around five core domains: <code>users</code>, <code>identity</code>, <code>wallets</code>, <code>transactions</code>, and <code>notifications</code>. Each domain is a Django app with its own models, serializers, views, and service layer. Business logic lives in services, not in views or models.</p>
+
+    <h3>Why a service layer?</h3>
+    <p>Early in the build I made the decision to introduce a <code>services.py</code> in each app rather than putting logic directly in views. This meant that when the Quidax webhook format changed partway through development, I only had to update one file — not hunt through view logic scattered across the codebase. For external API integrations especially, this separation paid off immediately.</p>
+
+    <h2 id="kyc">KYC verification with Dojah</h2>
+    <p>Know Your Customer (KYC) is a legal requirement for any financial application operating in Nigeria. Users must verify their identity before they can move money. I integrated <strong>Dojah</strong> — a Nigerian identity verification provider — to handle this.</p>
+    <p>The verification flow works as follows:</p>
+    <ul>
+      <li>User submits their NIN (National Identification Number) or BVN (Bank Verification Number)</li>
+      <li>The backend calls Dojah's lookup API and receives identity data</li>
+      <li>The response is validated against what the user provided at registration</li>
+      <li>Verification status is recorded on the user model and the account is unlocked for transactions</li>
+    </ul>
+
+    <pre><code># Simplified KYC verification service
+class KYCService:
+    def verify_nin(self, user, nin: str) -> VerificationResult:
+        response = dojah_client.identity.nin_lookup(nin=nin)
+
+        if not response.success:
+            return VerificationResult(success=False, reason=response.error)
+
+        data = response.entity
+        match = (
+            data.first_name.lower() == user.first_name.lower()
+            and data.last_name.lower() == user.last_name.lower()
+        )
+
+        if match:
+            user.kyc_status = KYCStatus.VERIFIED
+            user.kyc_verified_at = timezone.now()
+            user.save(update_fields=['kyc_status', 'kyc_verified_at'])
+
+        return VerificationResult(success=match)</code></pre>
+
+    <p>One challenge I didn't anticipate: name matching. Nigerian names are frequently spelled differently across documents — "Chukwuemeka" vs "Chukwu-Emeka", accents, middle names used as first names. I implemented fuzzy matching using a similarity threshold rather than strict equality, which reduced false rejections significantly.</p>
+
+    <h2 id="crypto">Crypto wallet creation with Quidax</h2>
+    <p><strong>Quidax</strong> is a Nigerian cryptocurrency exchange that provides a custodial wallet API — meaning we create wallets on behalf of users, and Quidax holds the actual keys. This is the right model for a consumer fintech app where users aren't expected to manage their own private keys.</p>
+    <p>When a user completes KYC verification, the system automatically provisions wallets for the supported cryptocurrencies. This is handled as a Celery task so it doesn't block the verification response.</p>
+
+    <pre><code># Triggered after KYC verification succeeds
+@shared_task
+def provision_crypto_wallets(user_id: int):
+    user = User.objects.get(id=user_id)
+    supported = ['BTC', 'ETH', 'USDT']
+
+    for currency in supported:
+        if not Wallet.objects.filter(user=user, currency=currency).exists():
+            address = quidax_client.wallets.create(
+                user_id=user.quidax_id,
+                currency=currency.lower()
+            )
+            Wallet.objects.create(
+                user=user,
+                currency=currency,
+                address=address,
+                provider=WalletProvider.QUIDAX
+            )
+
+    user.wallets_provisioned = True
+    user.save(update_fields=['wallets_provisioned'])</code></pre>
+
+    <p>Quidax also provides webhooks for incoming transactions. Every webhook payload is verified against a signature using the shared secret before any database writes happen — a lesson I learned from reading about exchange hacks where webhook verification was skipped.</p>
+
+    <h2 id="fiat">Fiat wallet with Flutterwave</h2>
+    <p>For naira deposits and withdrawals, I integrated <strong>Flutterwave</strong>. Each user gets a virtual account number — a real Nigerian bank account number that maps to their SwapFada wallet. When someone transfers money to that account number, Flutterwave sends a webhook and we credit the user's balance.</p>
+    <p>Withdrawals go through Flutterwave's transfer API, which initiates a direct bank transfer. The flow is asynchronous — the transfer is queued, Flutterwave processes it, and a webhook confirms success or failure.</p>
+
+    <div class="cs-callout">
+      <p>The hardest part of the fiat integration was handling idempotency correctly. Webhooks can be delivered more than once. Every credit or debit operation checks for a transaction reference before writing — crediting a user twice because a webhook was retried would be a serious bug in production.</p>
+    </div>
+
+    <pre><code># Idempotent webhook handler
+@transaction.atomic
+def handle_deposit_webhook(payload: dict) -> None:
+    ref = payload['data']['tx_ref']
+
+    # Idempotency check — skip if already processed
+    if Transaction.objects.filter(external_ref=ref).exists():
+        return
+
+    user = get_user_from_account(payload['data']['account_number'])
+    amount = Decimal(str(payload['data']['amount']))
+
+    Transaction.objects.create(
+        user=user,
+        type=TransactionType.DEPOSIT,
+        amount=amount,
+        external_ref=ref,
+        status=TransactionStatus.COMPLETED
+    )
+    user.fiat_balance = F('fiat_balance') + amount
+    user.save(update_fields=['fiat_balance'])</code></pre>
+
+    <h2 id="auth">Authentication & 2FA</h2>
+    <p>Authentication uses <strong>SimpleJWT</strong> with access and refresh tokens. The access token is short-lived (15 minutes); the refresh token lasts 7 days. This is standard practice for financial applications — a leaked access token has a narrow window before it expires.</p>
+    <p>Two-factor authentication uses TOTP (Time-based One-Time Passwords) — the same standard used by Google Authenticator and Authy. When a user enables 2FA, they're given a QR code to scan. On subsequent logins, after password verification succeeds, they're required to enter a valid 6-digit TOTP code before receiving their tokens.</p>
+
+    <pre><code># 2FA login flow (simplified)
+class LoginView(APIView):
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = authenticate(
+            email=serializer.validated_data['email'],
+            password=serializer.validated_data['password']
+        )
+        if not user:
+            raise AuthenticationFailed()
+
+        if user.two_factor_enabled:
+            # Issue a short-lived pre-auth token
+            # Client must call /auth/2fa/verify/ next
+            pre_auth = PreAuthToken.objects.create(user=user)
+            return Response({'requires_2fa': True, 'token': str(pre_auth.token)})
+
+        return Response(TokenObtainPairSerializer.get_token(user))</code></pre>
+
+    <h2 id="decisions">Key architectural decisions</h2>
+    <ul>
+      <li><strong>Monolith over microservices</strong> — right choice for this team size and timeline. The domain boundaries are clear enough that splitting later is possible if needed.</li>
+      <li><strong>Service layer for all business logic</strong> — views are thin, services are testable, external API clients are swappable.</li>
+      <li><strong>Celery for all wallet provisioning and notifications</strong> — nothing that talks to an external API blocks the HTTP response cycle.</li>
+      <li><strong>Idempotency keys on every financial write</strong> — non-negotiable. External webhooks will be delivered more than once.</li>
+      <li><strong>Soft deletes on financial records</strong> — nothing is ever deleted from the transactions table. Hard deletes in financial systems create audit holes.</li>
+    </ul>
+
+    <h2 id="learned">What I learned</h2>
+    <p>Building this alone meant I had to understand every layer — not just write the code, but make every architectural decision and live with it. The things that taught me the most weren't the integrations themselves but the edge cases: what happens when a webhook arrives twice, what happens when Quidax returns an error mid-provisioning, what happens when a user's name in the NIN database is spelled differently from what they registered with.</p>
+    <p>I also learned that documentation for African fintech APIs is inconsistent. Dojah's error responses changed format between the time I read the docs and the time I integrated. Quidax's webhook documentation had gaps that I only discovered during testing. Building a robust wrapper layer around each integration — rather than calling the APIs directly from views — meant these changes were contained.</p>
+    <p>The project is currently paused at around 70% due to funding constraints. The core backend — auth, KYC, wallet provisioning, fiat deposits — is complete and tested. What remains is the swap engine, advanced transaction history, and admin tooling.</p>
+
+  </article>
+</div>
+
+<div class="cs-next">
+  <div>
+    <div class="cs-next-label">Next case study</div>
+    <a href="case-study-nexdesk.html">
+      <div class="cs-next-title">NexDesk →</div>
+    </a>
+  </div>
+  <div style="text-align:right">
+    <div class="cs-next-label">Read the article</div>
+    <a href="article-swapfada-architecture.html" style="text-align:right">
+      <div class="cs-next-title">I built a fintech backend alone →</div>
+    </a>
+  </div>
+</div>
+
+<footer>
+  <span class="footer-name">Your Name — Abuja, Nigeria</span>
+  <div class="footer-links">
+    <a href="https://github.com/yourhandle" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://linkedin.com/in/yourhandle" target="_blank" rel="noopener">LinkedIn</a>
+    <a href="mailto:you@yourname.dev">Email</a>
+  </div>
+  <span class="footer-copy">Est. 2026</span>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Writing — Your Name</title>
+  <meta name="description" content="Articles on Django, system design, and building fintech for African markets. Bi-weekly.">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+</head>
+<body>
+
+<nav>
+  <a href="../index.html" class="nav-name">Your Name</a>
+  <ul class="nav-links">
+    <li><a href="../index.html#work">Work</a></li>
+    <li><a href="writing.html" class="active">Writing</a></li>
+    <li><a href="../index.html#tools">Tools</a></li>
+    <li><a href="../index.html#about">About</a></li>
+  </ul>
+</nav>
+
+<div class="writing-hero">
+  <h1 class="writing-title">Writing</h1>
+  <p class="writing-desc">Two series, published bi-weekly. <em>Django, Actually</em> translates the documentation to human. <em>System Design</em> takes real systems apart and puts them back together.</p>
+</div>
+
+<div class="writing-filter">
+  <button class="filter-btn active" onclick="filterArticles('all', this)">All</button>
+  <button class="filter-btn" onclick="filterArticles('django', this)">Django, Actually</button>
+  <button class="filter-btn" onclick="filterArticles('system', this)">System Design</button>
+  <button class="filter-btn" onclick="filterArticles('fintech', this)">Fintech</button>
+  <button class="filter-btn" onclick="filterArticles('case', this)">Case Studies</button>
+</div>
+
+<div class="writing-list" id="articles-list">
+
+  <a href="article-django-tenants.html" class="writing-row" data-series="django">
+    <div class="writing-num">01</div>
+    <div class="writing-info">
+      <div class="writing-row-title">django-tenants is documented. It is not explained. Here is the explanation.</div>
+      <div class="writing-row-desc">Multi-tenancy in Django done right — what the docs don't tell you about schema routing, tenant middleware, and the edge cases that will break your production app.</div>
+    </div>
+    <div class="writing-row-meta">
+      <span class="writing-row-series">Django, Actually</span>
+      <span class="writing-row-date">Jun 2026</span>
+    </div>
+  </a>
+
+  <a href="article-swapfada-architecture.html" class="writing-row" data-series="case">
+    <div class="writing-num">02</div>
+    <div class="writing-info">
+      <div class="writing-row-title">I built a fintech backend alone. Here is the architecture.</div>
+      <div class="writing-row-desc">KYC verification, crypto wallets, fiat payments, 2FA — the full architecture of a Nigerian fintech app, and every decision that went into it.</div>
+    </div>
+    <div class="writing-row-meta">
+      <span class="writing-row-series">Case Study</span>
+      <span class="writing-row-date">Jul 2026</span>
+    </div>
+  </a>
+
+  <a href="article-twitter-architecture.html" class="writing-row" data-series="system">
+    <div class="writing-num">03</div>
+    <div class="writing-info">
+      <div class="writing-row-title">How would you architect Twitter's timeline? Let's actually do it.</div>
+      <div class="writing-row-desc">Fan-out on write vs fan-out on read, Redis sorted sets, and why Twitter's timeline is one of the most interesting data problems in software.</div>
+    </div>
+    <div class="writing-row-meta">
+      <span class="writing-row-series">System Design</span>
+      <span class="writing-row-date">Aug 2026</span>
+    </div>
+  </a>
+
+  <a href="#" class="writing-row" data-series="django">
+    <div class="writing-num">04</div>
+    <div class="writing-info">
+      <div class="writing-row-title">select_related vs prefetch_related — the real difference, with real queries.</div>
+      <div class="writing-row-desc">The Django ORM docs explain what these do. They don't explain when to use which, what the query looks like, or what N+1 actually means in practice.</div>
+    </div>
+    <div class="writing-row-meta">
+      <span class="writing-row-series">Django, Actually</span>
+      <span class="writing-row-date">Aug 2026</span>
+    </div>
+  </a>
+
+  <a href="#" class="writing-row" data-series="fintech">
+    <div class="writing-num">05</div>
+    <div class="writing-info">
+      <div class="writing-row-title">Building fintech for African markets — KYC, crypto regulations, and what nobody tells you.</div>
+      <div class="writing-row-desc">What it's actually like to integrate Nigerian identity verification, navigate crypto custody regulations, and build financial infrastructure for a market that existing tools weren't designed for.</div>
+    </div>
+    <div class="writing-row-meta">
+      <span class="writing-row-series">Fintech</span>
+      <span class="writing-row-date">Sep 2026</span>
+    </div>
+  </a>
+
+  <a href="#" class="writing-row" data-series="system">
+    <div class="writing-num">06</div>
+    <div class="writing-info">
+      <div class="writing-row-title">How would you architect GitHub's notification system?</div>
+      <div class="writing-row-desc">Millions of events per hour, per-user delivery preferences, and zero tolerance for missed notifications. How do you build this without it becoming a mess?</div>
+    </div>
+    <div class="writing-row-meta">
+      <span class="writing-row-series">System Design</span>
+      <span class="writing-row-date">Sep 2026</span>
+    </div>
+  </a>
+
+  <a href="#" class="writing-row" data-series="django">
+    <div class="writing-num">07</div>
+    <div class="writing-info">
+      <div class="writing-row-title">Django signals: what they are, when to use them, and when to stop.</div>
+      <div class="writing-row-desc">Signals are one of the most misused parts of Django. They're powerful when used well and a debugging nightmare when used badly. Here's the line.</div>
+    </div>
+    <div class="writing-row-meta">
+      <span class="writing-row-series">Django, Actually</span>
+      <span class="writing-row-date">Oct 2026</span>
+    </div>
+  </a>
+
+  <a href="#" class="writing-row" data-series="django">
+    <div class="writing-num">08</div>
+    <div class="writing-info">
+      <div class="writing-row-title">Custom model managers are underused. Here is why you should care.</div>
+      <div class="writing-row-desc">Most Django developers know <code>objects.filter()</code>. Far fewer write custom managers. After you read this, you'll never go back to scattering query logic in your views.</div>
+    </div>
+    <div class="writing-row-meta">
+      <span class="writing-row-series">Django, Actually</span>
+      <span class="writing-row-date">Oct 2026</span>
+    </div>
+  </a>
+
+</div>
+
+<div style="padding: 28px 48px; border-top: 0.5px solid var(--rule);">
+  <p style="font-size:12px;color:var(--ink3)">More coming bi-weekly. No newsletter — bookmark this page or check back.</p>
+</div>
+
+<footer>
+  <span class="footer-name">Your Name — Abuja, Nigeria</span>
+  <div class="footer-links">
+    <a href="https://github.com/yourhandle" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://linkedin.com/in/yourhandle" target="_blank" rel="noopener">LinkedIn</a>
+    <a href="mailto:you@yourname.dev">Email</a>
+  </div>
+  <span class="footer-copy">Est. 2026</span>
+</footer>
+
+<script>
+function filterArticles(series, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.writing-row').forEach(row => {
+    if (series === 'all' || row.dataset.series === series) {
+      row.style.display = 'grid';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>django-tenants is documented. It is not explained. — Your Name</title>
+  <meta name="description" content="Multi-tenancy in Django: what the docs skip, what will break your production app, and how to actually think about schema routing.">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+</head>
+<body>
+
+<nav>
+  <a href="../index.html" class="nav-name">Your Name</a>
+  <ul class="nav-links">
+    <li><a href="../index.html#work">Work</a></li>
+    <li><a href="writing.html" class="active">Writing</a></li>
+    <li><a href="../index.html#tools">Tools</a></li>
+    <li><a href="../index.html#about">About</a></li>
+  </ul>
+</nav>
+
+<div class="art-hero">
+  <div class="art-eyebrow">
+    <span>Django, Actually</span>
+    <span>·</span>
+    <span>Jun 2026</span>
+    <span>·</span>
+    <span>12 min read</span>
+  </div>
+  <h1 class="art-title">django-tenants is documented.<br>It is not explained.</h1>
+  <p class="art-standfirst">Multi-tenancy is one of those things where the documentation tells you every configuration option and none of the things that will actually confuse you. This is an attempt to fill that gap — written by someone who spent more time than necessary figuring out why the schema router wasn't doing what I expected.</p>
+</div>
+
+<div class="art-body">
+  <aside class="art-sidebar">
+    <div class="art-sidebar-section">
+      <div class="art-sidebar-label">Series</div>
+      <div class="art-sidebar-val">Django, Actually</div>
+    </div>
+    <div class="art-sidebar-section">
+      <div class="art-sidebar-label">Published</div>
+      <div class="art-sidebar-val">June 2026</div>
+    </div>
+    <div class="art-sidebar-section">
+      <div class="art-sidebar-label">Assumes</div>
+      <div class="art-sidebar-val">Working knowledge of Django ORM and migrations</div>
+    </div>
+    <div class="art-sidebar-section">
+      <div class="art-sidebar-label">Also read</div>
+      <div class="art-sidebar-val"><a href="writing.html" style="color:var(--ink2);border-bottom:0.5px solid var(--rule)">select_related vs prefetch_related →</a></div>
+    </div>
+  </aside>
+
+  <article class="art-content">
+
+    <h2>What is multi-tenancy, actually</h2>
+    <p>Multi-tenancy means one running application serves multiple customers (tenants), and each customer's data is isolated from every other customer's data. If you're building a SaaS product — a project management tool, a CRM, a co-working management system — you probably need some form of this.</p>
+    <p>There are three common approaches:</p>
+    <ul>
+      <li><strong>Shared database, shared schema</strong> — all tenants in the same tables, with a <code>tenant_id</code> column on every row. Simple to implement, hard to get right, easy to accidentally leak data.</li>
+      <li><strong>Shared database, separate schemas</strong> — one database, but each tenant gets their own set of tables inside a PostgreSQL schema. This is what django-tenants does.</li>
+      <li><strong>Separate databases</strong> — one database per tenant. Maximum isolation, maximum operational complexity.</li>
+    </ul>
+    <p>django-tenants implements the middle option — separate schemas within one PostgreSQL database. If you're on MySQL or SQLite, stop reading and choose a different approach. django-tenants requires PostgreSQL. This is in the documentation, but not in the part of the documentation you read first.</p>
+
+    <h2>What django-tenants actually does</h2>
+    <p>When you install django-tenants and create a tenant, it creates a new PostgreSQL schema for that tenant and runs your tenant-aware migrations inside that schema. Each tenant gets a complete, private copy of all tenant-aware tables.</p>
+    <p>There's also a <strong>public schema</strong> — the default PostgreSQL schema — where shared data lives: the tenant list, authentication tables if you share auth across tenants, any data that belongs to the application rather than to any specific tenant.</p>
+    <div class="art-note">
+      <p>The distinction between public-schema models and tenant-schema models is the first thing that will confuse you. Every model in your application belongs to one of these two categories, and you configure that by controlling which apps are in <code>SHARED_APPS</code> vs <code>TENANT_APPS</code> in your settings.</p>
+    </div>
+    <p>When a request comes in, a middleware reads the subdomain (or whatever routing strategy you've configured) and sets the correct PostgreSQL schema for that request. All database queries in that request then run against that tenant's schema automatically.</p>
+
+    <h2>The SHARED_APPS / TENANT_APPS split</h2>
+    <p>This is where most people — including me — get confused initially. Here's what the settings look like:</p>
+
+    <pre><code>SHARED_APPS = [
+    'django_tenants',
+    'django.contrib.contenttypes',
+    'django.contrib.auth',
+    'myapp.tenants',   # the Tenant model lives here
+    'myapp.accounts',  # shared auth
+]
+
+TENANT_APPS = [
+    'django.contrib.sessions',
+    'myapp.workspaces',   # tenant-specific data
+    'myapp.billing',
+    'myapp.bookings',
+]
+
+INSTALLED_APPS = list(SHARED_APPS) + [
+    app for app in TENANT_APPS if app not in SHARED_APPS
+]</code></pre>
+
+    <p>The critical rules:</p>
+    <ul>
+      <li>Every app in <code>SHARED_APPS</code> runs migrations in the <strong>public schema only</strong></li>
+      <li>Every app in <code>TENANT_APPS</code> runs migrations in <strong>every tenant schema</strong></li>
+      <li>Apps can be in both lists — their migrations run in both public and tenant schemas</li>
+      <li><code>django_tenants</code> itself must be first in <code>SHARED_APPS</code></li>
+    </ul>
+    <p>The confusion I ran into: I had a <code>users</code> app that I wanted in <strong>both</strong> schemas — a global users table in public, but per-tenant user profile extensions in tenant schemas. The solution is to split this into two apps: <code>accounts</code> (shared, has the base User model) and <code>profiles</code> (tenant-only, has the profile extension).</p>
+
+    <h2>Routing — how Django knows which schema to use</h2>
+    <p>The default routing strategy uses subdomains. <code>acme.yourapp.com</code> routes to the "acme" tenant. <code>globex.yourapp.com</code> routes to "globex". The middleware does the subdomain parsing and sets the active schema before your view runs.</p>
+
+    <pre><code>MIDDLEWARE = [
+    'django_tenants.middleware.main.TenantMainMiddleware',
+    # ... rest of your middleware
+]
+
+# In your Tenant model
+class Tenant(TenantMixin):
+    name = models.CharField(max_length=100)
+
+    auto_create_schema = True  # creates the schema on save</code></pre>
+
+    <p>The part the docs underexplain: <code>auto_create_schema = True</code> means that when you <code>.save()</code> a new Tenant object, django-tenants automatically creates the PostgreSQL schema and runs all tenant migrations in it. This is convenient but means your tenant creation can fail midway through migration — you want this inside a transaction and with error handling.</p>
+
+    <h2>Running migrations</h2>
+    <p>You'll use two management commands instead of the standard <code>migrate</code>:</p>
+
+    <pre><code># Run shared (public schema) migrations
+python manage.py migrate_schemas --shared
+
+# Run tenant migrations across all tenant schemas
+python manage.py migrate_schemas --tenant
+
+# Run both
+python manage.py migrate_schemas</code></pre>
+
+    <p>The behaviour that will catch you: if you run <code>python manage.py migrate</code> (the standard command) in a django-tenants project, it won't do what you expect. Always use <code>migrate_schemas</code>.</p>
+
+    <h2>The things that will break your production app</h2>
+    <p>After working with this in a real project, these are the edge cases I wish someone had written down:</p>
+
+    <blockquote>
+      <p>Raw SQL queries and <code>django.db.connection.cursor()</code> bypass the schema routing entirely. If you have any raw SQL — including in third-party packages — it will hit whatever schema is set at the database level, not necessarily the active tenant's schema. Audit your dependencies for raw queries before deploying.</p>
+    </blockquote>
+
+    <ul>
+      <li><strong>Celery tasks</strong> don't automatically inherit the active schema. When a request triggers a Celery task, the task runs in a new context with no schema set. You must explicitly pass the tenant identifier to the task and set the schema at the start of the task.</li>
+      <li><strong>The public schema is not a safe default</strong>. Several Django internals (sessions, content types) behave unexpectedly when accessed from a tenant schema context. Keep a clear mental model of what lives where.</li>
+      <li><strong>Cross-tenant queries require caution</strong>. If you need to query across all tenants — for admin purposes, analytics, billing — you need to either iterate through tenants and switch schemas, or use raw SQL with schema-qualified table names.</li>
+      <li><strong>New tenant schema creation is slow</strong> if you have many migrations. On a project with 200 migrations, creating a new tenant and running all migrations takes 15–30 seconds. Consider this in your onboarding flow.</li>
+    </ul>
+
+    <h2>When not to use django-tenants</h2>
+    <p>Schema-per-tenant is the right choice for a specific set of requirements. It's probably wrong for your project if:</p>
+    <ul>
+      <li>You're not using PostgreSQL and can't switch</li>
+      <li>You have hundreds of thousands of tenants — managing that many schemas becomes an operational problem</li>
+      <li>Your tenants frequently need to query each other's data — cross-schema queries are painful</li>
+      <li>You're early stage and the isolation requirements of schema separation are overkill — a well-implemented <code>tenant_id</code> column approach is much simpler and sufficient for most early SaaS products</li>
+    </ul>
+    <p>For what it's worth: I used django-tenants on a project where it was the right choice, and the isolation guarantees it provides are genuinely valuable. When you're handling data for multiple businesses that have regulatory requirements around data separation, knowing that it's physically impossible for tenant A's query to touch tenant B's tables is meaningful. Just go in with clear eyes about the complexity it adds.</p>
+
+  </article>
+</div>
+
+<div class="art-more">
+  <div class="section-label">More in Django, Actually</div>
+  <div class="art-more-grid">
+    <a href="writing.html" class="art-more-item">
+      <div class="art-more-series">Django, Actually</div>
+      <div class="art-more-title">select_related vs prefetch_related — the real difference</div>
+    </a>
+    <a href="writing.html" class="art-more-item">
+      <div class="art-more-series">Django, Actually</div>
+      <div class="art-more-title">Django signals: when to use them, and when to stop</div>
+    </a>
+    <a href="article-twitter-architecture.html" class="art-more-item">
+      <div class="art-more-series">System Design</div>
+      <div class="art-more-title">How would you architect Twitter's timeline?</div>
+    </a>
+  </div>
+</div>
+
+<footer>
+  <span class="footer-name">Your Name — Abuja, Nigeria</span>
+  <div class="footer-links">
+    <a href="https://github.com/yourhandle" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://linkedin.com/in/yourhandle" target="_blank" rel="noopener">LinkedIn</a>
+    <a href="mailto:you@yourname.dev">Email</a>
+  </div>
+  <span class="footer-copy">Est. 2026</span>
+</footer>
+
+</body>
+</html>

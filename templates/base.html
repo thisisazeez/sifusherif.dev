@@ -1,0 +1,40 @@
+{% load i18n static %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Abdulazeez Sherif — Backend Engineer &amp; Founder{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}Backend engineer and founder. Building fintech infrastructure and developer tooling.{% endblock %}">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  <link rel="stylesheet" href="{% static 'css/tabler-icons.min.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<nav>
+  <a href="{% url 'home' %}" class="nav-name">Abdulazeez Sherif</a>
+  <ul class="nav-links">
+    <li><a href="{% url 'home' %}#work" {% block nav_work %}{% endblock %}>{% trans "Work" %}</a></li>
+    <li><a href="{% url 'writing:writing_list' %}" {% block nav_writing %}{% endblock %}>{% trans "Writing" %}</a></li>
+    <li><a href="{% url 'home' %}#tools" {% block nav_tools %}{% endblock %}>{% trans "Tools" %}</a></li>
+    <li><a href="{% url 'home' %}#about" {% block nav_about %}{% endblock %}>{% trans "About" %}</a></li>
+  </ul>
+</nav>
+
+{% block content %}{% endblock %}
+
+<footer>
+  <span class="footer-name">{{ site.footer_tagline }}</span>
+  <div class="footer-links">
+    {% if site.github_url %}<a href="{{ site.github_url }}" target="_blank" rel="noopener">GitHub</a>{% endif %}
+    {% if site.linkedin_url %}<a href="{{ site.linkedin_url }}" target="_blank" rel="noopener">LinkedIn</a>{% endif %}
+    {% if site.medium_url %}<a href="{{ site.medium_url }}" target="_blank" rel="noopener">Medium</a>{% endif %}
+    <a href="mailto:{{ site.contact_email }}">{% trans "Email" %}</a>
+  </div>
+  <span class="footer-copy">Est. {{ site.established_year }}</span>
+</footer>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>

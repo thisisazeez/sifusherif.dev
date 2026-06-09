@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}Abdulazeez Sherif — Backend Engineer &amp; Founder{% endblock %}
+
+{% block content %}
+
+{# ── HERO ────────────────────────────────────────────────────────────────── #}
+<section class="hero">
+  <h1 class="hero-title">
+    Backend<br>
+    engineer &amp;<br>
+    <em>founder.</em>
+  </h1>
+  <div class="hero-right">
+    <p class="hero-desc">{{ site.hero_description }}</p>
+    <div class="hero-chips">
+      {% for chip in site.skills_chips %}
+      <span class="chip">{{ chip }}</span>
+      {% endfor %}
+      {% if site.available_for_work %}
+      <a href="mailto:{{ site.contact_email }}" class="chip">
+        <span class="avail-dot"></span>{% trans "Open to contracts" %}
+      </a>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+{# ── WORK ────────────────────────────────────────────────────────────────── #}
+<section class="section" id="work">
+  <div class="section-head">
+    <span class="section-label">{% trans "Work" %}</span>
+    <span class="section-count">{% blocktrans with n=case_studies|length %}{{ n }} studies{% endblocktrans %}</span>
+  </div>
+  <div class="work-grid">
+    {% for cs in case_studies %}
+    <a href="{{ cs.get_absolute_url }}"
+       class="work-item{% if cs.is_dark_card %} dark{% endif %}{% if cs.is_wide_card %} wide{% endif %}">
+      <div class="work-num">{{ cs.number_display }} — {{ cs.category }}</div>
+      <div class="work-body"{% if cs.is_wide_card %} style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px"{% endif %}>
+        {% if cs.is_wide_card %}<div>{% endif %}
+        <div class="work-cat">{{ cs.subcategory }}</div>
+        <h2 class="work-title"{% if cs.is_wide_card %} style="font-size:30px"{% endif %}>{{ cs.title }}</h2>
+        <p class="work-desc"{% if cs.is_wide_card %} style="max-width:500px"{% endif %}>{{ cs.short_desc }}</p>
+        {% if cs.is_wide_card %}</div>{% endif %}
+        <div class="work-tech">
+          {% for tag in cs.tech_tags %}
+          <span class="tech-tag">{{ tag }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      <i class="ti ti-arrow-up-right work-arrow" aria-hidden="true"></i>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+
+{# ── WRITING ─────────────────────────────────────────────────────────────── #}
+<section class="section" id="writing">
+  <div class="section-head">
+    <span class="section-label">{% trans "Writing" %}</span>
+    <span class="section-count">{% trans "Bi-weekly" %}</span>
+  </div>
+  <ul class="articles-list">
+    {% for article in articles %}
+    <li>
+      <a href="{{ article.get_absolute_url }}" class="article-row">
+        <span class="article-idx">{{ forloop.counter|stringformat:"i" }}.</span>
+        <span class="article-title">{{ article.title }}</span>
+        <div class="article-meta">
+          <span class="article-series">{{ article.series.name|default:"" }}</span>
+          <span class="article-date">{{ article.published_at|date:"M Y" }}</span>
+        </div>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+
+  <div style="margin-top:44px">
+    <div class="section-label" style="margin-bottom:16px">{% trans "Two series, alternating fortnightly" %}</div>
+    <div class="pub-schedule">
+      {% for series in series_list %}
+      <div class="pub-card">
+        <div class="pub-label">{% trans "Series" %} {{ forloop.counter|stringformat:"02d" }}</div>
+        <div class="pub-title">{{ series.name }}</div>
+        <div class="pub-desc">{{ series.description }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{# ── TOOLS ───────────────────────────────────────────────────────────────── #}
+<section class="section" id="tools">
+  <div class="section-head">
+    <span class="section-label">{% trans "Open source" %}</span>
+    <span class="section-count">{% trans "Tools &amp; writing" %}</span>
+  </div>
+  <div class="tools-row">
+    {% for tool in tools %}
+    <div class="tool-item">
+      <span class="tool-status status-{{ tool.status }}">{{ tool.get_status_display }}</span>
+      <div class="tool-name">{{ tool.name }}</div>
+      <div class="tool-desc">{{ tool.description }}</div>
+      <div class="tool-chips">
+        {% for tag in tool.tags %}
+        <span class="chip" style="font-size:10px">{{ tag }}</span>
+        {% endfor %}
+        {% if tool.github_url %}
+        <a href="{{ tool.github_url }}" target="_blank" rel="noopener"
+           class="chip" style="font-size:10px">GitHub →</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+{# ── ABOUT ───────────────────────────────────────────────────────────────── #}
+<div class="about-strip" id="about">
+  <div class="about-label">{% trans "About" %}</div>
+  <div class="about-text">
+    {{ site.about_html|safe }}
+    <p style="margin-top:24px">
+      <a href="mailto:{{ site.contact_email }}" class="chip">{% trans "Get in touch" %} →</a>
+    </p>
+  </div>
+</div>
+
+{% endblock %}
