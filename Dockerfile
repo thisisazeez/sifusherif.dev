@@ -30,11 +30,8 @@ COPY --from=builder /install /usr/local
 
 COPY . .
 
-RUN DJANGO_SETTINGS_MODULE=config.settings.production \
+RUN DJANGO_SETTINGS_MODULE=config.settings.base \
     SECRET_KEY=build-time-placeholder \
-    ALLOWED_HOSTS='*' \
-    DB_PATH=/tmp/build.sqlite3 \
-    REDIS_URL=redis://localhost:6379/1 \
     python manage.py collectstatic --noinput --clear
 
 RUN mkdir -p /app/data && chown -R appuser:appuser /app/data && \
