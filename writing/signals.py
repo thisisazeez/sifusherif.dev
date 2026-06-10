@@ -11,17 +11,26 @@ How it works:
     this is fine. On a larger site you'd target specific cache keys instead.
 """
 from django.core.cache import cache
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 
-from .models import Article, CaseStudy
+from .models import Article, CaseStudy, Series
 
 
 @receiver(post_save, sender=Article)
+@receiver(post_delete, sender=Article)
 def clear_article_cache(sender, instance, **kwargs):
     cache.clear()
 
 
 @receiver(post_save, sender=CaseStudy)
+@receiver(post_delete, sender=CaseStudy)
 def clear_case_study_cache(sender, instance, **kwargs):
     cache.clear()
+
+
+@receiver(post_save, sender=Series)
+@receiver(post_delete, sender=Series)
+def clear_series_cache(sender, instance, **kwargs):
+    cache.clear()
+
