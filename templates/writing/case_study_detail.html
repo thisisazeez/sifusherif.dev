@@ -4,6 +4,33 @@
 {% block title %}{{ cs.title }} — {% trans "Case Study" %} — Abdulazeez Sherif{% endblock %}
 {% block meta_description %}{{ cs.subtitle }}{% endblock %}
 
+{% block og_type %}article{% endblock %}
+{% block title_og %}{{ cs.title }}{% endblock %}
+{% block desc_og %}{{ cs.subtitle }}{% endblock %}
+{% block title_twitter %}{{ cs.title }}{% endblock %}
+{% block desc_twitter %}{{ cs.subtitle }}{% endblock %}
+
+{% block json_ld %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "{{ cs.title|escapejs }}",
+  "description": "{{ cs.subtitle|escapejs }}",
+  "author": {
+    "@type": "Person",
+    "name": "Abdulazeez Sherif",
+    "url": "{{ request.scheme }}://{{ request.get_host }}{% url 'home' %}"
+  },
+  "mainEntityOfPage": "{{ request.build_absolute_uri }}",
+  "publisher": {
+    "@type": "Person",
+    "name": "Abdulazeez Sherif"
+  }
+}
+</script>
+{% endblock %}
+
 {% block content %}
 
 <div class="cs-hero">

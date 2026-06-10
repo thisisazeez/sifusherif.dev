@@ -14,9 +14,6 @@ python manage.py migrate --noinput
 echo "[entrypoint] Creating superuser (if not already exists)..."
 python manage.py create_superuser_env
 
-echo "[entrypoint] Importing Medium articles with overwrite mode..."
-python manage.py import_articles medium --overwrite
-
 echo "[entrypoint] Starting Gunicorn..."
 exec "$@"
 echo "[entrypoint] ERROR: Gunicorn exited with code $?" >&2

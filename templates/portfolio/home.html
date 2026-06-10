@@ -3,6 +3,38 @@
 
 {% block title %}Abdulazeez Sherif — Backend Engineer &amp; Founder{% endblock %}
 
+{% block json_ld %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Person",
+  "name": "Abdulazeez Sherif",
+  "jobTitle": "Backend Engineer & Founder",
+  "url": "{{ request.scheme }}://{{ request.get_host }}{% url 'home' %}",
+  "sameAs": [
+    {% if site.github_url %}"{{ site.github_url }}"{% endif %}{% if site.github_url and site.linkedin_url %},{% endif %}
+    {% if site.linkedin_url %}"{{ site.linkedin_url }}"{% endif %}{% if site.linkedin_url and site.medium_url %},{% endif %}
+    {% if site.medium_url %}"{{ site.medium_url }}"{% endif %}
+  ],
+  "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "Abuja",
+    "addressCountry": "Nigeria"
+  },
+  "description": "{{ site.hero_description|escapejs }}"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "Abdulazeez Sherif",
+  "url": "{{ request.scheme }}://{{ request.get_host }}{% url 'home' %}",
+  "description": "{{ site.hero_description|escapejs }}"
+}
+</script>
+{% endblock %}
+
 {% block content %}
 
 {# ── HERO ────────────────────────────────────────────────────────────────── #}

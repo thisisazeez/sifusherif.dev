@@ -6,6 +6,44 @@
 {% block title %}{{ article.title }} — Abdulazeez Sherif{% endblock %}
 {% block meta_description %}{{ article.standfirst }}{% endblock %}
 
+{% block og_type %}article{% endblock %}
+{% block title_og %}{{ article.title }}{% endblock %}
+{% block desc_og %}{{ article.standfirst }}{% endblock %}
+{% block title_twitter %}{{ article.title }}{% endblock %}
+{% block desc_twitter %}{{ article.standfirst }}{% endblock %}
+
+{% block extra_head %}
+  <meta property="article:published_time" content="{{ article.published_at|date:'c' }}">
+  <meta property="article:modified_time" content="{{ article.updated_at|date:'c' }}">
+  <meta property="article:author" content="Abdulazeez Sherif">
+  {% if article.series %}
+  <meta property="article:section" content="{{ article.series.name }}">
+  {% endif %}
+{% endblock %}
+
+{% block json_ld %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "{{ article.title|escapejs }}",
+  "description": "{{ article.standfirst|escapejs }}",
+  "datePublished": "{{ article.published_at|date:'c' }}",
+  "dateModified": "{{ article.updated_at|date:'c' }}",
+  "author": {
+    "@type": "Person",
+    "name": "Abdulazeez Sherif",
+    "url": "{{ request.scheme }}://{{ request.get_host }}{% url 'home' %}"
+  },
+  "mainEntityOfPage": "{{ request.build_absolute_uri }}",
+  "publisher": {
+    "@type": "Person",
+    "name": "Abdulazeez Sherif"
+  }
+}
+</script>
+{% endblock %}
+
 {% block content %}
 
 <div class="art-hero">

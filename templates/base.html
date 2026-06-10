@@ -6,9 +6,36 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Abdulazeez Sherif — Backend Engineer &amp; Founder{% endblock %}</title>
   <meta name="description" content="{% block meta_description %}Backend engineer and founder. Building fintech infrastructure and developer tooling.{% endblock %}">
+
+  <!-- Canonical link -->
+  <link rel="canonical" href="{% block canonical_url %}{{ request.build_absolute_uri }}{% endblock %}">
+
+  <!-- Alternate Language Links -->
+  {% for lang_code, lang_name in LANGUAGES %}
+    <link rel="alternate" hreflang="{{ lang_code }}" href="{{ request.scheme }}://{{ request.get_host }}{% translate_url lang_code %}">
+  {% endfor %}
+  <link rel="alternate" hreflang="x-default" href="{{ request.scheme }}://{{ request.get_host }}{% translate_url 'en' %}">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+  <meta property="og:url" content="{% block og_url %}{{ request.build_absolute_uri }}{% endblock %}">
+  <meta property="og:title" content="{% block og_title %}{% block title_og %}Abdulazeez Sherif — Backend Engineer &amp; Founder{% endblock %}{% endblock %}">
+  <meta property="og:description" content="{% block og_description %}{% block desc_og %}Backend engineer and founder. Building fintech infrastructure and developer tooling.{% endblock %}{% endblock %}">
+  <meta property="og:image" content="{% block og_image %}{{ request.scheme }}://{{ request.get_host }}{% static 'images/og-image.png' %}{% endblock %}">
+  <meta property="og:site_name" content="Abdulazeez Sherif">
+  <meta property="og:locale" content="{{ LANGUAGE_CODE }}">
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="{% block twitter_card %}summary_large_image{% endblock %}">
+  <meta property="twitter:url" content="{% block twitter_url %}{{ request.build_absolute_uri }}{% endblock %}">
+  <meta property="twitter:title" content="{% block twitter_title %}{% block title_twitter %}Abdulazeez Sherif — Backend Engineer &amp; Founder{% endblock %}{% endblock %}">
+  <meta property="twitter:description" content="{% block twitter_description %}{% block desc_twitter %}Backend engineer and founder. Building fintech infrastructure and developer tooling.{% endblock %}{% endblock %}">
+  <meta property="twitter:image" content="{% block twitter_image %}{{ request.scheme }}://{{ request.get_host }}{% static 'images/og-image.png' %}{% endblock %}">
+
   <link rel="stylesheet" href="{% static 'css/style.css' %}">
   <link rel="stylesheet" href="{% static 'css/tabler-icons.min.css' %}">
   {% block extra_head %}{% endblock %}
+  {% block json_ld %}{% endblock %}
 </head>
 <body>
 
